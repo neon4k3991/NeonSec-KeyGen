@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Генератор ключей AES/RSA</title>
+  <style>
+    :root {
+      --primary-color: #3498db;
+      --primary-hover: #2980b9;
+      --background: #f5f5f5;
+      --card-bg: white;
+      --text-color: #2c3e50;
+    }
+    
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --background: #121212;
+        --card-bg: #1e1e1e;
+        --text-color: #f5f5f5;
+      }
+    }
+    
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: var(--background);
+      color: var(--text-color);
+      -webkit-text-size-adjust: 100%;
+      touch-action: manipulation;
+    }
+    
+    h1 {
+      color: var(--primary-color);
+      text-align: center;
+      font-size: 1.8rem;
+      margin-bottom: 1.5rem;
+    }
+    
+    .section {
+      background: var(--card-bg);
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+    
+    h2 {
+      font-size: 1.4rem;
+      margin-top: 0;
+      color: var(--primary-color);
+    }
+    
+    h3 {
+      font-size: 1.2rem;
+      margin-bottom: 0.5rem;
+    }
+    
+    button {
+      background-color: var(--primary-color);
+      color: white;
+      border: none;
+      padding: 12px 15px;
+      border-radius: 8px;
+      cursor: pointer;
+      margin: 8px 0;
+      width: 100%;
+      font-size: 1rem;
+      font-weight: 500;
+      transition: background-color 0.2s;
+      -webkit-appearance: none;
+    }
+    
+    button:hover, button:active {
+      background-color: var(--primary-hover);
+    }
+    
+    .key-box {
+      background: rgba(0,0,0,0.05);
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px dashed #ccc;
+      word-break: break-all;
+      margin: 12px 0;
+      font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+      font-size: 0.9rem;
+      line-height: 1.4;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    
+    input[type="password"] {
+      width: 100%;
+      padding: 12px;
+      margin: 8px 0;
+      border-radius: 8px;
+      border: 1px solid #ddd;
+      font-size: 1rem;
+      background: var(--card-bg);
+      color: var(--text-color);
+    }
+    
+    .copy-btn {
+      background-color: #2ecc71;
+      margin-top: -5px;
+    }
+    
+    .copy-btn:hover, .copy-btn:active {
+      background-color: #27ae60;
+    }
+    
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.7);
+      color: white;
+      padding: 12px 24px;
+      border-radius: 8px;
+      z-index: 100;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    
+    @media (max-width: 600px) {
+      body {
+        padding: 15px;
+      }
+      
+      .section {
+        padding: 15px;
+      }
+      
+      h1 {
+        font-size: 1.5rem;
+      }
+      
+      .key-box {
+        font-size: 0.8rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>🔑 Генератор ключей AES/RSA</h1>
+
+  <!-- AES Section -->
+  <div class="section">
+    <h2>AES-256 Ключ</h2>
+    <button id="generateAesKey">Сгенерировать AES ключ</button>
+    <div id="aesKey" class="key-box">Ключ появится здесь...</div>
+    <button id="saveAesKey">Сохранить AES ключ</button>
+    <button id="copyAesKey" class="copy-btn">Копировать AES ключ</button>
+  </div>
+
+  <!-- RSA Section -->
+  <div class="section">
+    <h2>RSA Ключи</h2>
+    <input type="password" id="rsaPassword" placeholder="Пароль для приватного ключа (не обязательно)">
+    <button id="generateRsaKeys">Сгенерировать RSA ключи</button>
+    
+    <h3>Публичный ключ:</h3>
+    <div id="rsaPublicKey" class="key-box">Публичный ключ появится здесь...</div>
+    <button id="saveRsaPublicKey">Сохранить публичный ключ</button>
+    <button id="copyRsaPublicKey" class="copy-btn">Копировать публичный ключ</button>
+    
+    <h3>Приватный ключ:</h3>
+    <div id="rsaPrivateKey" class="key-box">Приватный ключ появится здесь...</div>
+    <button id="saveRsaPrivateKey">Сохранить приватный ключ</button>
+    <button id="copyRsaPrivateKey" class="copy-btn">Копировать приватный ключ</button>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // Toast notification
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.style.opacity = 1;
+      setTimeout(() => {
+        toast.style.opacity = 0;
+      }, 2000);
+    }
+
+    // Copy to clipboard function
+    function copyToClipboard(text) {
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(text).then(() => {
+          showToast('Скопировано в буфер обмена');
+        }).catch(err => {
+          console.error('Не удалось скопировать: ', err);
+          fallbackCopy(text);
+        });
+      } else {
+        fallbackCopy(text);
+      }
+    }
+
+    function fallbackCopy(text) {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.position = 'fixed';
+      document.body.appendChild(textarea);
+      textarea.select();
+      
+      try {
+        document.execCommand('copy');
+        showToast('Скопировано в буфер обмена');
+      } catch (err) {
+        console.error('Не удалось скопировать: ', err);
+        showToast('Ошибка копирования');
+      }
+      
+      document.body.removeChild(textarea);
+    }
+
+    class RSALib {
+      /**
+       * Генерирует RSA ключевую пару (2048 бит)
+       * @param {string} [password] - Пароль для шифрования приватного ключа (опционально)
+       * @returns {Promise<{publicKey: string, privateKey: string}>}
+       */
+      static async generateKeyPair(password = null) {
+        try {
+          showToast('Генерация ключей...');
+          
+          const keyPair = await crypto.subtle.generateKey(
+            {
+              name: 'RSA-OAEP',
+              modulusLength: 2048,
+              publicExponent: new Uint8Array([0x01, 0x00, 0x01]),
+              hash: 'SHA-256',
+            },
+            true,
+            ['encrypt', 'decrypt']
+          );
+
+          const publicKey = await crypto.subtle.exportKey('spki', keyPair.publicKey);
+          let privateKey = await crypto.subtle.exportKey('pkcs8', keyPair.privateKey);
+
+          if (password) {
+            const aesKey = await this._deriveAesKey(password);
+            const iv = crypto.getRandomValues(new Uint8Array(16));
+            const encryptedPrivateKey = await crypto.subtle.encrypt(
+              { name: 'AES-CBC', iv },
+              aesKey,
+              privateKey
+            );
+            privateKey = this._arrayBufferToBase64(
+              this._concatArrayBuffers(iv.buffer, encryptedPrivateKey)
+            );
+          } else {
+            privateKey = this._arrayBufferToBase64(privateKey);
+          }
+
+          showToast('Ключи сгенерированы');
+          return {
+            publicKey: this._arrayBufferToBase64(publicKey),
+            privateKey: password ? `encrypted:${privateKey}` : privateKey,
+          };
+        } catch (error) {
+          showToast('Ошибка генерации');
+          throw error;
+        }
+      }
+
+      /**
+       * Сохраняет ключ в файл
+       * @param {string} key - Ключ в Base64
+       * @param {string} filename - Имя файла
+       */
+      static saveKey(key, filename) {
+        try {
+          // Для iOS нужно использовать новый Blob
+          const blob = new Blob([key], { type: 'application/octet-stream' });
+          const url = URL.createObjectURL(blob);
+          
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = filename;
+          a.style.display = 'none';
+          document.body.appendChild(a);
+          
+          // Для iOS нужно использовать click событие
+          const event = new MouseEvent('click', {
+            view: window,
+            bubbles: true,
+            cancelable: true
+          });
+          
+          a.dispatchEvent(event);
+          
+          // Очистка
+          setTimeout(() => {
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+          }, 100);
+          
+          showToast('Файл сохранен');
+        } catch (e) {
+          showToast('Ошибка сохранения');
+          console.error('Ошибка при сохранении файла:', e);
+        }
+      }
+
+      // Вспомогательные методы
+      static async _deriveAesKey(password) {
+        const salt = new TextEncoder().encode('RSA-PRIVATE-KEY-SALT');
+        const iterations = 100000;
+        const keyMaterial = await crypto.subtle.importKey(
+          'raw',
+          new TextEncoder().encode(password),
+          { name: 'PBKDF2' },
+          false,
+          ['deriveKey']
+        );
+        return crypto.subtle.deriveKey(
+          {
+            name: 'PBKDF2',
+            salt,
+            iterations,
+            hash: 'SHA-256',
+          },
+          keyMaterial,
+          { name: 'AES-CBC', length: 256 },
+          false,
+          ['encrypt', 'decrypt']
+        );
+      }
+
+      static _concatArrayBuffers(buffer1, buffer2) {
+        const tmp = new Uint8Array(buffer1.byteLength + buffer2.byteLength);
+        tmp.set(new Uint8Array(buffer1), 0);
+        tmp.set(new Uint8Array(buffer2), buffer1.byteLength);
+        return tmp.buffer;
+      }
+
+      static _arrayBufferToBase64(buffer) {
+        return btoa(String.fromCharCode(...new Uint8Array(buffer)));
+      }
+    }
+
+    class AESLib {
+      /**
+       * Генерирует случайный AES-256 ключ
+       * @returns {Uint8Array} - 32-байтный ключ
+       */
+      static generateKey() {
+        return crypto.getRandomValues(new Uint8Array(32));
+      }
+
+      /**
+       * Сохраняет ключ в файл
+       * @param {Uint8Array} key - Ключ для сохранения
+       * @param {string} [filename='aes-key.bin'] - Имя файла
+       */
+      static saveKey(key, filename = 'aes-key.bin') {
+        try {
+          const blob = new Blob([key], { type: 'application/octet-stream' });
+          const url = URL.createObjectURL(blob);
+          
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = filename;
+          a.style.display = 'none';
+          document.body.appendChild(a);
+          
+          const event = new MouseEvent('click', {
+            view: window,
+            bubbles: true,
+            cancelable: true
+          });
+          
+          a.dispatchEvent(event);
+          
+          setTimeout(() => {
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+          }, 100);
+          
+          showToast('Файл сохранен');
+        } catch (e) {
+          showToast('Ошибка сохранения');
+          console.error('Ошибка при сохранении файла:', e);
+        }
+      }
+    }
+
+    // Для использования в HTML
+    window.RSALib = RSALib;
+    window.AESLib = AESLib;
+
+    // ========== AES Логика ==========
+    let aesKey = null;
+    
+    document.getElementById('generateAesKey').addEventListener('click', () => {
+      try {
+        aesKey = AESLib.generateKey();
+        const keyBase64 = btoa(String.fromCharCode(...aesKey));
+        document.getElementById('aesKey').textContent = `AES Key (Base64): ${keyBase64}`;
+        showToast('AES ключ сгенерирован');
+      } catch (e) {
+        showToast('Ошибка генерации');
+        console.error(e);
+      }
+    });
+
+    document.getElementById('saveAesKey').addEventListener('click', () => {
+      if (!aesKey) {
+        showToast('Сначала сгенерируйте ключ!');
+        return;
+      }
+      AESLib.saveKey(aesKey, 'aes-key.bin');
+    });
+
+    document.getElementById('copyAesKey').addEventListener('click', () => {
+      if (!aesKey) {
+        showToast('Сначала сгенерируйте ключ!');
+        return;
+      }
+      const keyBase64 = btoa(String.fromCharCode(...aesKey));
+      copyToClipboard(keyBase64);
+    });
+
+    // ========== RSA Логика ==========
+    let rsaKeys = null;
+    
+    document.getElementById('generateRsaKeys').addEventListener('click', async () => {
+      const password = document.getElementById('rsaPassword').value || null;
+      try {
+        rsaKeys = await RSALib.generateKeyPair(password);
+        document.getElementById('rsaPublicKey').textContent = 
+          `Публичный ключ (Base64): ${rsaKeys.publicKey.substring(0, 100)}...`;
+        document.getElementById('rsaPrivateKey').textContent = 
+          `Приватный ключ: ${rsaKeys.privateKey.startsWith('encrypted:') ? '[ЗАШИФРОВАН] ' : ''}${rsaKeys.privateKey.substring(0, 100)}...`;
+      } catch (e) {
+        showToast(`Ошибка: ${e.message}`);
+        console.error(e);
+      }
+    });
+
+    document.getElementById('saveRsaPublicKey').addEventListener('click', () => {
+      if (!rsaKeys) {
+        showToast('Сначала сгенерируйте ключи!');
+        return;
+      }
+      RSALib.saveKey(rsaKeys.publicKey, 'rsa-public.pem');
+    });
+
+    document.getElementById('copyRsaPublicKey').addEventListener('click', () => {
+      if (!rsaKeys) {
+        showToast('Сначала сгенерируйте ключи!');
+        return;
+      }
+      copyToClipboard(rsaKeys.publicKey);
+    });
+
+    document.getElementById('saveRsaPrivateKey').addEventListener('click', () => {
+      if (!rsaKeys) {
+        showToast('Сначала сгенерируйте ключи!');
+        return;
+      }
+      RSALib.saveKey(rsaKeys.privateKey, 'rsa-private.pem');
+    });
+
+    document.getElementById('copyRsaPrivateKey').addEventListener('click', () => {
+      if (!rsaKeys) {
+        showToast('Сначала сгенерируйте ключи!');
+        return;
+      }
+      copyToClipboard(rsaKeys.privateKey);
+    });
+
+    // Отключаем масштабирование при двойном тапе (для iOS)
+    document.addEventListener('dblclick', (e) => {
+      e.preventDefault();
+    }, { passive: false });
+  </script>
+</body>
+</html>
